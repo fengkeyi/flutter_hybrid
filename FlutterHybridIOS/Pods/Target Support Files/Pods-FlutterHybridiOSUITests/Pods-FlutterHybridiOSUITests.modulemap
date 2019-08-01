@@ -1,0 +1,6 @@
+framework module Pods_FlutterHybridiOSUITests {
+  umbrella header "Pods-FlutterHybridiOSUITests-umbrella.h"
+
+  export *
+  module * { export * }
+}
