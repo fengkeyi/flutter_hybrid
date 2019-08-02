@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 
-void main() => runApp(MyApp(routeName:window.defaultRouteName));
+void main() => runApp(MyApp(routeName: window.defaultRouteName));
 
 class MyApp extends StatelessWidget {
-
   final routeName;
 
   const MyApp({Key key, this.routeName}) : super(key: key);
@@ -16,14 +18,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page',routeName: routeName,),
+      home: MyHomePage(
+        title: 'Flutter Demo Home Page',
+        routeName: routeName,
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-
-  MyHomePage({Key key, this.title,this.routeName}) : super(key: key);
+  MyHomePage({Key key, this.title, this.routeName}) : super(key: key);
 
   final String title;
 
@@ -35,16 +39,79 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  BasicMessageChannel<String> _basicMessageChannel;
+  MethodChannel _methodChannel;
+  EventChannel _eventChannel;
+  StreamSubscription _streamSubscribption;
+  String _showMsg;
+  String _responseMsg;
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    _basicMessageChannel = const BasicMessageChannel<String>(
+        'key_basic_message_channel', StringCodec());
+    _basicMessageChannel.setMessageHandler(_handlerBasicMessage);
+    _methodChannel = MethodChannel('key_method_channel');
+    _eventChannel = EventChannel('key_event_channel');
+    _streamSubscribption = _eventChannel
+        .receiveBroadcastStream('123')
+        .listen(_onToDart, onError: _onToDartError);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _streamSubscribption.cancel();
+    super.dispose();
+  }
+
+  _onToDartError(error) {
+    print(error);
+  }
+
+  void _onToDart(event) {
     setState(() {
-      _counter++;
+      _showMsg = event;
+    });
+  }
+
+  Future<String> _handlerBasicMessage(String message) {
+    return Future<String>(() {
+      setState(() {
+        _showMsg = message;
+      });
+      return 'dart收到nativ BasicMsg信息：$message';
+    });
+  }
+
+  void _handleSendBasicMsg(String msg) async {
+    try {
+      _responseMsg = await _basicMessageChannel.send(msg);
+      setState(() {});
+    } on PlatformException catch (e) {
+      print(e);
+    }
+  }
+
+  void _handleSendMethodChannel(String msg) async {
+    try {
+      _responseMsg =
+          await _methodChannel.invokeMethod('send', 'method agr') as String;
+      setState(() {});
+    } on PlatformException catch (e) {
+      print(e);
+    }
+  }
+
+  void _onChange(String code) async {
+    var responseStr = await _basicMessageChannel.send(code);
+    setState(() {
+      _showMsg = responseStr;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -54,20 +121,34 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'YYou have pushed the button this many times:',
+              widget.routeName,
+              style: TextStyle(color: Colors.red),
             ),
             Text(
-              '$_counter',
+              '收到native信息:$_showMsg',
               style: Theme.of(context).textTheme.display1,
             ),
-            Text(widget.routeName,style: TextStyle(color: Colors.red),)
+            TextField(
+              onChanged: _onChange,
+              decoration: InputDecoration(
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white),
+                ),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.red),
+                ),
+              ),
+            )
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {},
         tooltip: 'Increment',
-        child: Icon(Icons.add),
+        child: Icon(
+          Icons.send,
+          color: Colors.blue,
+        ),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
