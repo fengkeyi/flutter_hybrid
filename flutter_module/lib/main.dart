@@ -28,11 +28,8 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title, this.routeName}) : super(key: key);
-
   final String title;
-
   final String routeName;
-
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -92,7 +89,6 @@ class _MyHomePageState extends State<MyHomePage> {
       print(e);
     }
   }
-
   void _handleSendMethodChannel(String msg) async {
     try {
       _responseMsg =
