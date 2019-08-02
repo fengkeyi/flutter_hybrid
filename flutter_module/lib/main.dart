@@ -35,7 +35,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   BasicMessageChannel<String> _basicMessageChannel;
   MethodChannel _methodChannel;
   EventChannel _eventChannel;
@@ -49,9 +48,10 @@ class _MyHomePageState extends State<MyHomePage> {
         'key_basic_message_channel', StringCodec());
     _basicMessageChannel.setMessageHandler(_handlerBasicMessage);
     _methodChannel = MethodChannel('key_method_channel');
+    _methodChannel.setMethodCallHandler(_handleMethodChannel);
     _eventChannel = EventChannel('key_event_channel');
     _streamSubscribption = _eventChannel
-        .receiveBroadcastStream('123')
+        .receiveBroadcastStream("123")
         .listen(_onToDart, onError: _onToDartError);
     super.initState();
   }
@@ -60,6 +60,14 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _streamSubscribption.cancel();
     super.dispose();
+  }
+
+  Future<String> _handleMethodChannel(MethodCall call){
+    if(call.method.compareTo('send')==0) {
+      setState(() {
+        _showMsg = call.arguments;
+      });
+    }
   }
 
   _onToDartError(error) {
@@ -81,14 +89,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _handleSendBasicMsg(String msg) async {
-    try {
-      _responseMsg = await _basicMessageChannel.send(msg);
-      setState(() {});
-    } on PlatformException catch (e) {
-      print(e);
-    }
-  }
   void _handleSendMethodChannel(String msg) async {
     try {
       _responseMsg =
@@ -100,7 +100,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onChange(String code) async {
-    var responseStr = await _basicMessageChannel.send(code);
+//    var responseStr = await _basicMessageChannel.send(code);
+  var responseStr = await _methodChannel.invokeMethod('send',"dart to nav:$code");
+
+
     setState(() {
       _showMsg = responseStr;
     });

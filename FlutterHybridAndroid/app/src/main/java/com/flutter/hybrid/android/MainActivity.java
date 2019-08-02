@@ -15,10 +15,13 @@ import android.widget.TextView;
 
 import io.flutter.facade.Flutter;
 import io.flutter.plugin.common.BasicMessageChannel;
+import io.flutter.plugin.common.EventChannel;
+import io.flutter.plugin.common.MethodCall;
+import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.StringCodec;
 import io.flutter.view.FlutterView;
 
-public class MainActivity extends AppCompatActivity implements BasicMessageChannel.MessageHandler<String>,BasicMessageChannel.Reply<String> {
+public class MainActivity extends AppCompatActivity implements BasicMessageChannel.MessageHandler<String>,BasicMessageChannel.Reply<String>, MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
     FrameLayout layout;
     FlutterView flutterView;
@@ -26,6 +29,9 @@ public class MainActivity extends AppCompatActivity implements BasicMessageChann
     TextView text;
 
     private BasicMessageChannel basicMessageChannel;
+    private MethodChannel methodChannel;
+    private EventChannel eventChannel;
+    private EventChannel.EventSink eventSink;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +48,14 @@ public class MainActivity extends AppCompatActivity implements BasicMessageChann
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                basicMessageChannel.send(s.toString(),MainActivity.this);
+//                basicMessageChannel.send(s.toString(),MainActivity.this);
+//                methodChannel.invokeMethod("send",s.toString());
+                if (eventSink != null) {
+                    eventSink.success(s.toString());
+                } else {
+                    eventChannel = new EventChannel(flutterView,"key_event_channel");
+                    eventChannel.setStreamHandler(MainActivity.this);
+                }
             }
 
             @Override
@@ -63,8 +76,12 @@ public class MainActivity extends AppCompatActivity implements BasicMessageChann
      * 初始化，设置消息处理器
      */
     private void initChannel() {
-        basicMessageChannel = new BasicMessageChannel(flutterView, "key_basic_message_channel", StringCodec.INSTANCE);
+        basicMessageChannel = new BasicMessageChannel(flutterView, "key_basic_message_channel2", StringCodec.INSTANCE);
         basicMessageChannel.setMessageHandler(this);
+        methodChannel = new MethodChannel(flutterView,"key_method_channel");
+        methodChannel.setMethodCallHandler(this);
+        eventChannel = new EventChannel(flutterView,"key_event_channel");
+        eventChannel.setStreamHandler(this);
     }
 
     private void addFlutterView(){
@@ -103,4 +120,32 @@ public class MainActivity extends AppCompatActivity implements BasicMessageChann
     }
 
     private final static String TAG = "FKY_CHANNEL";
+
+    /**
+     * method channel 回调
+     * @param methodCall
+     * @param result
+     */
+    @Override
+    public void onMethodCall(@NonNull MethodCall methodCall, @NonNull MethodChannel.Result result) {
+        if (methodCall.method.equals("send")) {
+            String content = (String) methodCall.arguments;
+            text.setText(content);
+            result.success("nati回复："+content);
+        }else{
+            result.error("方法找不到1","方法找不到1","方法找不到1");
+        }
+    }
+
+    @Override
+    public void onListen(Object o, EventChannel.EventSink eventSink) {
+        Log.i(TAG, "onListen "+o.toString());
+        text.setText(o.toString());
+        this.eventSink = eventSink;
+    }
+
+    @Override
+    public void onCancel(Object o) {
+        Log.i(TAG, "onCancel "+o.toString());
+    }
 }
